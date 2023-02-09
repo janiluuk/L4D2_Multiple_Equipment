@@ -123,7 +123,7 @@ public void OnPluginStart()
 
 	AutoExecConfig(true, "l4d_multiple_equipment");
 
-	AddCommandListener(Listener_CallVote, "callvote");
+	// AddCommandListener(Listener_CallVote, "callvote");
 
 	ResetClientStateAll();
 }
