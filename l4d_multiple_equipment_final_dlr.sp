@@ -394,6 +394,10 @@ void AmmoLock(int client)
 					{
 						SetEntProp(client, Prop_Data, "m_iAmmo", 1, _, AmmoType);
 						ChangeEdictState(client, FindDataMapInfo(client, "m_iAmmo"));
+						int secondweapon = CheckSecondSlotHasWeaponAndAmmo(client);
+						if (secondweapon > 0) {
+							 PrintToChat(client, "Switched to secondary slot!");
+						}
 					}
 				}
 			}
@@ -1025,6 +1029,36 @@ void AttachAllEquipment(int client)
 
 	for(int slot = 0; slot <= 4; slot++)
 		ItemAttachEnt[client][slot] = CreateItemAttach(client, ItemName[client][slot], slot);
+}
+
+int CheckSecondSlotHasWeaponAndAmmo(int client)
+{
+	int newweapon = 0;
+	int slot = 0;
+	int weapon = GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
+	char otherweapon[32];
+	if (!StrEqual(ItemName[client][slot], "")) {
+			Format(otherweapon, sizeof(otherweapon), ItemName[client][slot]);
+
+			if (StrContains(otherweapon, "smg") > -1 ||
+			StrContains(otherweapon, "shotgun") > -1 ||
+			StrContains(otherweapon, "rifle") > -1 ||
+			StrContains(otherweapon, "sniper") > -1 ||
+			StrContains(otherweapon, "grenade_launcher") > -1)
+		{
+			int ammo = ItemInfo[client][slot][0];
+			int clip = ItemInfo[client][slot][1];
+
+			if (ammo > 1 || clip > 0) {
+				float time = GetEngineTime();
+				int buttons = GetClientButtons(client);				
+				int w = Process(client, time, buttons, true, weapon);
+				if(w > 0)
+					newweapon = w;
+			}
+		}
+	}
+	return newweapon;
 }
 
 void DropSecondaryItem(int client)
