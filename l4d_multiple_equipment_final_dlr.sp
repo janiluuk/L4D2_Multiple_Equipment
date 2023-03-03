@@ -238,7 +238,7 @@ public Action:player_jump(Handle:event, const String:name[], bool:dontBroadcast)
 	if(g_gamestart==false)
 	{				
 		g_gamestart=true;
-		ShowMsg(0, "[Equipment] Multiple Equipments started sucessfully!");
+	//	ShowMsg(0, "[Equipment] Multiple Equipments started sucessfully!");
 	}  
 	if(MeEnable[client]==false)
 	{		
@@ -394,6 +394,10 @@ void AmmoLock(int client)
 					{
 						SetEntProp(client, Prop_Data, "m_iAmmo", 1, _, AmmoType);
 						ChangeEdictState(client, FindDataMapInfo(client, "m_iAmmo"));
+						int secondweapon = CheckSecondSlotHasWeaponAndAmmo(client);
+						if (secondweapon > 0) {
+						//	 PrintToChat(client, "Switched to secondary slot!");
+						}
 					}
 				}
 			}
@@ -846,7 +850,7 @@ void SetVector(float target[3], float x, float y, float z)
 int CreateItemAttach(int client, char[] classname, int slot)
 {
 	if(GetConVarInt(l4d_me_view) != 1 || !IsSurvivor(client) || !IsPlayerAlive(client))
-		return;
+		return -1;
 
 	char model[LEN64];
 
@@ -856,7 +860,7 @@ int CreateItemAttach(int client, char[] classname, int slot)
 		GetModelFromClass_l4d1(classname, model, slot);
 
 	if (StrEqual(classname, "") || StrEqual(model, ""))
-		return;
+		return -1;
 
 	int entity = MEIndex[client];
 
@@ -866,7 +870,7 @@ int CreateItemAttach(int client, char[] classname, int slot)
 	entity = CreateEntityByName("prop_dynamic_override");
 
 	if(entity < 0)
-		return;
+		return -1;
 
 	SetEntityModel(entity, model);
 	//DispatchKeyValue(entity, "model", model);
@@ -979,8 +983,8 @@ int CreateItemAttach(int client, char[] classname, int slot)
 
 	MEIndex[client] = EntIndexToEntRef(entity);
 	MEOwner[entity] = GetClientUserId(client);
-
 	SDKHook(entity, SDKHook_SetTransmit, Hook_SetTransmit_View);
+	return entity;
 }
 
 public Action Hook_SetTransmit_View(int entity, int client)
@@ -1025,6 +1029,36 @@ void AttachAllEquipment(int client)
 
 	for(int slot = 0; slot <= 4; slot++)
 		ItemAttachEnt[client][slot] = CreateItemAttach(client, ItemName[client][slot], slot);
+}
+
+int CheckSecondSlotHasWeaponAndAmmo(int client)
+{
+	int newweapon = 0;
+	int slot = 0;
+	int weapon = GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
+	char otherweapon[32];
+	if (!StrEqual(ItemName[client][slot], "")) {
+			Format(otherweapon, sizeof(otherweapon), ItemName[client][slot]);
+
+			if (StrContains(otherweapon, "smg") > -1 ||
+			StrContains(otherweapon, "shotgun") > -1 ||
+			StrContains(otherweapon, "rifle") > -1 ||
+			StrContains(otherweapon, "sniper") > -1 ||
+			StrContains(otherweapon, "grenade_launcher") > -1)
+		{
+			int ammo = ItemInfo[client][slot][0];
+			int clip = ItemInfo[client][slot][1];
+
+			if (ammo > 1 || clip > 0) {
+				float time = GetEngineTime();
+				int buttons = GetClientButtons(client);				
+				int w = Process(client, time, buttons, true, weapon);
+				if(w > 0)
+					newweapon = w;
+			}
+		}
+	}
+	return newweapon;
 }
 
 void DropSecondaryItem(int client)
