@@ -850,7 +850,7 @@ void SetVector(float target[3], float x, float y, float z)
 int CreateItemAttach(int client, char[] classname, int slot)
 {
 	if(GetConVarInt(l4d_me_view) != 1 || !IsSurvivor(client) || !IsPlayerAlive(client))
-		return;
+		return -1;
 
 	char model[LEN64];
 
@@ -860,7 +860,7 @@ int CreateItemAttach(int client, char[] classname, int slot)
 		GetModelFromClass_l4d1(classname, model, slot);
 
 	if (StrEqual(classname, "") || StrEqual(model, ""))
-		return;
+		return -1;
 
 	int entity = MEIndex[client];
 
@@ -870,7 +870,7 @@ int CreateItemAttach(int client, char[] classname, int slot)
 	entity = CreateEntityByName("prop_dynamic_override");
 
 	if(entity < 0)
-		return;
+		return -1;
 
 	SetEntityModel(entity, model);
 	//DispatchKeyValue(entity, "model", model);
@@ -983,8 +983,8 @@ int CreateItemAttach(int client, char[] classname, int slot)
 
 	MEIndex[client] = EntIndexToEntRef(entity);
 	MEOwner[entity] = GetClientUserId(client);
-
 	SDKHook(entity, SDKHook_SetTransmit, Hook_SetTransmit_View);
+	return entity;
 }
 
 public Action Hook_SetTransmit_View(int entity, int client)
