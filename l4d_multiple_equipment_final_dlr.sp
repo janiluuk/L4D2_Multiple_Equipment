@@ -238,7 +238,7 @@ public Action:player_jump(Handle:event, const String:name[], bool:dontBroadcast)
 	if(g_gamestart==false)
 	{				
 		g_gamestart=true;
-		ShowMsg(0, "[Equipment] Multiple Equipments started sucessfully!");
+	//	ShowMsg(0, "[Equipment] Multiple Equipments started sucessfully!");
 	}  
 	if(MeEnable[client]==false)
 	{		
@@ -396,7 +396,7 @@ void AmmoLock(int client)
 						ChangeEdictState(client, FindDataMapInfo(client, "m_iAmmo"));
 						int secondweapon = CheckSecondSlotHasWeaponAndAmmo(client);
 						if (secondweapon > 0) {
-							 PrintToChat(client, "Switched to secondary slot!");
+						//	 PrintToChat(client, "Switched to secondary slot!");
 						}
 					}
 				}
