@@ -394,10 +394,6 @@ void AmmoLock(int client)
 					{
 						SetEntProp(client, Prop_Data, "m_iAmmo", 1, _, AmmoType);
 						ChangeEdictState(client, FindDataMapInfo(client, "m_iAmmo"));
-						int secondweapon = CheckSecondSlotHasWeaponAndAmmo(client);
-						if (secondweapon > 0) {
-							 PrintToChat(client, "Switched to secondary slot!");
-						}
 					}
 				}
 			}
@@ -587,7 +583,7 @@ public Action eWeaponFire(Handle event, const char[] name, bool dontBroadcast)
 public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3], float angles[3], int &weapon)
 {
 	if (!client || !IsSurvivor(client) || !IsPlayerAlive(client))
-		return;
+		return Plugin_Stop;
 
 	//new lastButton = LastButton[client];
 	LastButton[client] = buttons;
@@ -641,6 +637,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 			}
 		}
 	}
+	return Plugin_Continue;
 }
 
 public void OnClientDisconnect_Post(int client)
@@ -850,7 +847,7 @@ void SetVector(float target[3], float x, float y, float z)
 int CreateItemAttach(int client, char[] classname, int slot)
 {
 	if(GetConVarInt(l4d_me_view) != 1 || !IsSurvivor(client) || !IsPlayerAlive(client))
-		return;
+		return -1;
 
 	char model[LEN64];
 
@@ -860,7 +857,7 @@ int CreateItemAttach(int client, char[] classname, int slot)
 		GetModelFromClass_l4d1(classname, model, slot);
 
 	if (StrEqual(classname, "") || StrEqual(model, ""))
-		return;
+		return -1;
 
 	int entity = MEIndex[client];
 
@@ -870,7 +867,7 @@ int CreateItemAttach(int client, char[] classname, int slot)
 	entity = CreateEntityByName("prop_dynamic_override");
 
 	if(entity < 0)
-		return;
+		return -1;
 
 	SetEntityModel(entity, model);
 	//DispatchKeyValue(entity, "model", model);
@@ -985,6 +982,7 @@ int CreateItemAttach(int client, char[] classname, int slot)
 	MEOwner[entity] = GetClientUserId(client);
 
 	SDKHook(entity, SDKHook_SetTransmit, Hook_SetTransmit_View);
+	return entity;
 }
 
 public Action Hook_SetTransmit_View(int entity, int client)
@@ -1029,36 +1027,6 @@ void AttachAllEquipment(int client)
 
 	for(int slot = 0; slot <= 4; slot++)
 		ItemAttachEnt[client][slot] = CreateItemAttach(client, ItemName[client][slot], slot);
-}
-
-int CheckSecondSlotHasWeaponAndAmmo(int client)
-{
-	int newweapon = 0;
-	int slot = 0;
-	int weapon = GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
-	char otherweapon[32];
-	if (!StrEqual(ItemName[client][slot], "")) {
-			Format(otherweapon, sizeof(otherweapon), ItemName[client][slot]);
-
-			if (StrContains(otherweapon, "smg") > -1 ||
-			StrContains(otherweapon, "shotgun") > -1 ||
-			StrContains(otherweapon, "rifle") > -1 ||
-			StrContains(otherweapon, "sniper") > -1 ||
-			StrContains(otherweapon, "grenade_launcher") > -1)
-		{
-			int ammo = ItemInfo[client][slot][0];
-			int clip = ItemInfo[client][slot][1];
-
-			if (ammo > 1 || clip > 0) {
-				float time = GetEngineTime();
-				int buttons = GetClientButtons(client);				
-				int w = Process(client, time, buttons, true, weapon);
-				if(w > 0)
-					newweapon = w;
-			}
-		}
-	}
-	return newweapon;
 }
 
 void DropSecondaryItem(int client)
@@ -1204,7 +1172,7 @@ void LoadEquipmentAll() //FOR MISSION LOST
 #define model_weapon_adrenaline "models/w_models/weapons/w_eq_adrenaline.mdl"
 
 
-int GetModelFromClass_l4d2(char[] weapon, char model[LEN64], int slot = 0)
+void GetModelFromClass_l4d2(char[] weapon, char model[LEN64], int slot = 0)
 {
 	switch(slot)
 	{
@@ -1291,7 +1259,7 @@ int GetModelFromClass_l4d2(char[] weapon, char model[LEN64], int slot = 0)
 #define model1_weapon_first_aid_kit "models/w_models/weapons/w_eq_Medkit.mdl"
 #define model1_weapon_pain_pills "models/w_models/weapons/w_eq_painpills.mdl"
 
-int GetModelFromClass_l4d1(char[] weapon, char model[LEN64], int slot = 0)
+void GetModelFromClass_l4d1(char[] weapon, char model[LEN64], int slot = 0)
 {
 	switch(slot)
 	{
@@ -1333,7 +1301,7 @@ int GetModelFromClass_l4d1(char[] weapon, char model[LEN64], int slot = 0)
 	}
 }
 
-int GetItemClass(int ent, char classname[LEN64])
+void GetItemClass(int ent, char classname[LEN64])
 {
 	classname = "";
 
