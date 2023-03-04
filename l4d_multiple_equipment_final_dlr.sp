@@ -59,7 +59,7 @@ Handle AmmoLockSlot1 = INVALID_HANDLE;
 Handle AmmoUseDistance = INVALID_HANDLE;
 Handle g_hCookie;
 
-int	g_iClientModePref[MAXPLAYERS+1];						// Client cookie preferences - mode client last used for all grenades
+int	g_iClientModePref[MAXPLAYERS+1];// Client cookie preferences - mode client last used 
 
 public Plugin myinfo =
 {
