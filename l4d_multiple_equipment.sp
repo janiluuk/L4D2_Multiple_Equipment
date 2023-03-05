@@ -2,6 +2,7 @@
 #include <sdkhooks>
 #include <sdktools>
 #include <sdktools_functions>
+#include <clientprefs>
 
 #pragma semicolon 1
 
@@ -56,13 +57,16 @@ Handle ME_Notify[MAXPLAYERS+1];
 Handle AmmoLockSlot0 = INVALID_HANDLE;
 Handle AmmoLockSlot1 = INVALID_HANDLE;
 Handle AmmoUseDistance = INVALID_HANDLE;
+Handle g_hCookie;
+
+int	g_iClientModePref[MAXPLAYERS+1];// Client cookie preferences - mode client last used 
 
 public Plugin myinfo =
 {
 	name = "Multiple Equipment",
 	author = "Yani & MasterMind42 & Pan Xiaohai",
 	description = "Carry 2 items in each slot",
-	version = "3.7",
+	version = "3.8",
 	url = ""
 }
 
@@ -122,6 +126,7 @@ public void OnPluginStart()
 	RegConsoleCmd("sm_me", sm_me); 
 
 	AutoExecConfig(true, "l4d_multiple_equipment");
+	g_hCookie = RegClientCookie("l4d_multiple_equipment_mode", "Multiple Equipment - Mode", CookieAccess_Protected);
 
 	// AddCommandListener(Listener_CallVote, "callvote");
 
@@ -152,6 +157,34 @@ void GameCheck()
 	GameMode += 0;
 }
 
+public void OnClientCookiesCached(int client)
+{
+	if( client>0 && IsClientInGame(client) && !IsFakeClient(client) )
+	{
+		// Get client cookies, set type if available or default.
+		static char sCookie[3];
+		GetClientCookie(client, g_hCookie, sCookie, sizeof(sCookie));
+
+		if(StringToInt(sCookie) == 1 || StringToInt(sCookie) == 2 )
+		{
+			g_iClientModePref[client] = StringToInt(sCookie);
+
+		} else {
+			g_iClientModePref[client] = 0;
+		}
+	}
+}
+
+void SetClientPrefs(int client)
+{
+	if( !IsFakeClient(client) )
+	{	
+		static char sCookie[1];
+		Format(sCookie, sizeof(sCookie), "%i", g_iClientModePref[client]);
+		SetClientCookie(client, g_hCookie, sCookie);
+	}
+}
+
 static void CheckAnimation(int client, int iSequence)
 {
 	static char sModel[31];
@@ -179,16 +212,22 @@ public Action:sm_me(client,args)
 
 ModeSelectMenu(client)
 {
+
 	new mode=GetConVarInt(l4d_me_mode);
 	if(mode==0)
 	{
-		new Handle:menu = CreateMenu(MenuSelector1);
-		SetMenuTitle(menu, "Please Select Control Mode for Multi-Equipments (!me)"); 
-		AddMenuItem(menu, "1", "Mode 1: 1,2,3,4,5 (default)");
-		AddMenuItem(menu, "2", "Mode 2: QQ, 11,22,33,44,55"); 
-		SetMenuExitButton(menu, true);
-		 
-		DisplayMenu(menu, client, 10); 
+		if (g_iClientModePref[client] > 0 && g_iClientModePref[client] < 3) {
+			 ControlMode[client] = g_iClientModePref[client];
+		} else {
+
+			new Handle:menu = CreateMenu(MenuSelector1);
+			SetMenuTitle(menu, "Please Select Control Mode for Multi-Equipments (!me)"); 
+			AddMenuItem(menu, "1", "Mode 1: 1,2,3,4,5 (default)");
+			AddMenuItem(menu, "2", "Mode 2: QQ, 11,22,33,44,55"); 
+			SetMenuExitButton(menu, true);
+			 
+			DisplayMenu(menu, client, 10); 
+		}
 	}
 	else
 	{
@@ -198,18 +237,21 @@ ModeSelectMenu(client)
 }
 public MenuSelector1(Handle:menu, MenuAction:action, client, param2)
 {
-	
 	if (action == MenuAction_Select)
 	{ 
 		decl String:item[256], String:display[256];		
 		GetMenuItem(menu, param2, item, sizeof(item), _, display, sizeof(display));		
 		if (StrEqual(item, "1"))
 		{
+			g_iClientModePref[client] = 1;
+			SetClientPrefs(client);
 			ControlMode[client]=0;
 			if(client>0 && IsClientInGame(client))ShowMsg(client, "Press 1,2,3,4,5 to use Multi-Equipments");
 		}
 		else if(StrEqual(item, "2"))
 		{
+			g_iClientModePref[client] = 2;
+			SetClientPrefs(client);
 			ControlMode[client]=1;
 			if(client>0 && IsClientInGame(client))ShowMsg(client, "Press double click Q, 1,2,3,4,5 to use Multi-Equipments");
 		}
@@ -1480,8 +1522,11 @@ public void OnMapStart()
 		PrecacheModel(model1_weapon_pain_pills);
 	}
 
-	for (int client = 1; client <= MaxClients; client++)
+	for (int client = 1; client <= MaxClients; client++) {
 		MsgOn[client] = true;
+		OnClientCookiesCached(client);
+	}
+
 }
 
 public Action ePlayerTeam(Handle event, const char[] name, bool dontBroadcast)
