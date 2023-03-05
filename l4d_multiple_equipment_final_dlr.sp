@@ -159,7 +159,7 @@ void GameCheck()
 
 public void OnClientCookiesCached(int client)
 {
-	if( !IsFakeClient(client) )
+	if( client>0 && IsClientInGame(client) && !IsFakeClient(client) )
 	{
 		// Get client cookies, set type if available or default.
 		static char sCookie[3];
