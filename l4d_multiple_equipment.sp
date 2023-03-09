@@ -179,9 +179,10 @@ void SetClientPrefs(int client)
 {
 	if( !IsFakeClient(client) )
 	{	
-		static char sCookie[1];
+		static char sCookie[2];
 		Format(sCookie, sizeof(sCookie), "%i", g_iClientModePref[client]);
 		SetClientCookie(client, g_hCookie, sCookie);
+		ShowMsg(client, "Saving your preference. Type !me to change it later");
 	}
 }
 
@@ -205,19 +206,27 @@ public Action:sm_me(client,args)
 {
 	if(IsValidClient(client) && MeEnable[client])
 	{
-		ModeSelectMenu(client);
+		ModeSelectMenu(client, true);
 	}
 	return Plugin_Handled;
 }
 
-ModeSelectMenu(client)
+ModeSelectMenu(client, bool force=false)
 {
+	if(force == false && (client<=0 || !IsClientInGame(client) || GetClientTeam(client) != 2))
+	{
+		return;
+	}
 
 	new mode=GetConVarInt(l4d_me_mode);
 	if(mode==0)
 	{
-		if (g_iClientModePref[client] > 0 && g_iClientModePref[client] < 3) {
+		if (g_iClientModePref[client] >= 0 && g_iClientModePref[client] < 3 && force == false) {
 			 ControlMode[client] = g_iClientModePref[client];
+			 char message[128]; 
+			 Format(message, sizeof(message), "Mode %i automatically chosen for multiple equipment. Type !me to change it.", ControlMode[client]);
+			 ShowMsg(client, message);
+
 		} else {
 
 			new Handle:menu = CreateMenu(MenuSelector1);
@@ -243,14 +252,14 @@ public MenuSelector1(Handle:menu, MenuAction:action, client, param2)
 		GetMenuItem(menu, param2, item, sizeof(item), _, display, sizeof(display));		
 		if (StrEqual(item, "1"))
 		{
-			g_iClientModePref[client] = 1;
+			g_iClientModePref[client] = 0;
 			SetClientPrefs(client);
 			ControlMode[client]=0;
 			if(client>0 && IsClientInGame(client))ShowMsg(client, "Press 1,2,3,4,5 to use Multi-Equipments");
 		}
 		else if(StrEqual(item, "2"))
 		{
-			g_iClientModePref[client] = 2;
+			g_iClientModePref[client] = 1;
 			SetClientPrefs(client);
 			ControlMode[client]=1;
 			if(client>0 && IsClientInGame(client))ShowMsg(client, "Press double click Q, 1,2,3,4,5 to use Multi-Equipments");
@@ -261,13 +270,13 @@ public MenuSelector1(Handle:menu, MenuAction:action, client, param2)
 ShowMsg(client,String:msg[])
 {
 	new mode=GetConVarInt(l4d_me_custom_notify_msg);
-	if(mode==0)return;
-	if(mode==1)
+	//if(mode==0)return;
+	if(mode == 0 || mode==1)
 	{
 		if(client==0)PrintToChatAll(msg);
 		else PrintToChat(client, msg);
 	}
-	if(mode==2)
+	if( mode==2)
 	{
 		if(client==0)PrintHintTextToAll(msg);
 		else PrintHintText(client, msg);
@@ -314,9 +323,9 @@ EnableClient(client,bool:isenable)
 public Action:player_use(Handle:event, const String:name[], bool:dontBroadcast)
 {  
 	new client =GetClientOfUserId(GetEventInt(event, "userid"));
-	if(client==0) return Plugin_Continue;
+	if(client==0) return;
 
-	if(!(GetClientButtons(client) & IN_USE)) return Plugin_Continue;
+	if(!(GetClientButtons(client) & IN_USE)) return;
 	if(g_gamestart==false)
 	{				
 		g_gamestart=true;
@@ -337,7 +346,7 @@ public Action:player_use(Handle:event, const String:name[], bool:dontBroadcast)
 		//PrintToChat(client, "[Equipment] Load Equipment sucessfully!");
 		
 	}
-	return Plugin_Continue;
+	return;
 }
 
 public Action:round_start(Handle:event, const String:name[], bool:dontBroadcast)
