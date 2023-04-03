@@ -159,15 +159,20 @@ void GameCheck()
 
 public void OnClientCookiesCached(int client)
 {
-	if( client>0 && IsClientInGame(client) && !IsFakeClient(client) )
+	if( client > 0 && IsClientInGame(client) && !IsFakeClient(client))
 	{
 		// Get client cookies, set type if available or default.
+		int iCookie;
 		static char sCookie[3];
-		GetClientCookie(client, g_hCookie, sCookie, sizeof(sCookie));
+		//PrintToChat(client, "Looking for cookie.. ");
 
-		if(StringToInt(sCookie) == 1 || StringToInt(sCookie) == 2 )
+		GetClientCookie(client, g_hCookie, sCookie, sizeof(sCookie));
+		iCookie = StringToInt(sCookie);
+		//PrintToChat(client, "Found cookie value %d", sCookie);
+	
+		if (iCookie == 1 || iCookie == 2)
 		{
-			g_iClientModePref[client] = StringToInt(sCookie);
+			g_iClientModePref[client] = iCookie;
 
 		} else {
 			g_iClientModePref[client] = 0;
@@ -178,11 +183,11 @@ public void OnClientCookiesCached(int client)
 void SetClientPrefs(int client)
 {
 	if( !IsFakeClient(client) )
-	{	
-		static char sCookie[2];
-		Format(sCookie, sizeof(sCookie), "%i", g_iClientModePref[client]);
+	{
+		static char sCookie[3];
+		Format(sCookie, sizeof(sCookie), "%s", g_iClientModePref[client]);
+		//PrintToChat(client,"Setting cookie %i to %d", g_iClientModePref[client], sCookie);
 		SetClientCookie(client, g_hCookie, sCookie);
-		ShowMsg(client, "Saving your preference. Type !me to change it later");
 	}
 }
 
@@ -221,8 +226,8 @@ ModeSelectMenu(client, bool force=false)
 	new mode=GetConVarInt(l4d_me_mode);
 	if(mode==0)
 	{
-		if (g_iClientModePref[client] >= 0 && g_iClientModePref[client] < 3 && force == false) {
-			 ControlMode[client] = g_iClientModePref[client];
+		if (g_iClientModePref[client] > 0 && g_iClientModePref[client] < 3 && force == false) {
+			 ControlMode[client] = g_iClientModePref[client]-1;
 			 char message[128]; 
 			 Format(message, sizeof(message), "Mode %i automatically chosen for multiple equipment. Type !me to change it.", ControlMode[client]);
 			 ShowMsg(client, message);
@@ -252,14 +257,14 @@ public MenuSelector1(Handle:menu, MenuAction:action, client, param2)
 		GetMenuItem(menu, param2, item, sizeof(item), _, display, sizeof(display));		
 		if (StrEqual(item, "1"))
 		{
-			g_iClientModePref[client] = 0;
+			g_iClientModePref[client] = 1;
 			SetClientPrefs(client);
 			ControlMode[client]=0;
 			if(client>0 && IsClientInGame(client))ShowMsg(client, "Press 1,2,3,4,5 to use Multi-Equipments");
 		}
 		else if(StrEqual(item, "2"))
 		{
-			g_iClientModePref[client] = 1;
+			g_iClientModePref[client] = 2;
 			SetClientPrefs(client);
 			ControlMode[client]=1;
 			if(client>0 && IsClientInGame(client))ShowMsg(client, "Press double click Q, 1,2,3,4,5 to use Multi-Equipments");
