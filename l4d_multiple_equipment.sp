@@ -229,7 +229,7 @@ ModeSelectMenu(client, bool force=false)
 		if (g_iClientModePref[client] > 0 && g_iClientModePref[client] < 3 && force == false) {
 			 ControlMode[client] = g_iClientModePref[client]-1;
 			 char message[128]; 
-			 Format(message, sizeof(message), "Mode %i automatically chosen for multiple equipment. Type !me to change it.", ControlMode[client]);
+			 Format(message, sizeof(message), "Mode \x04%i\x01 automatically chosen for multiple equipment. Type \x04!me\x01 to change it.", ControlMode[client]+1);
 			 ShowMsg(client, message);
 
 		} else {
@@ -299,7 +299,7 @@ public Action:player_jump(Handle:event, const String:name[], bool:dontBroadcast)
 	if(MeEnable[client]==false)
 	{		
 		EnableClient(client,true);
-		ShowMsg(client, "[Equipment] Multiple Equipments enabled, type:!me to select control mode");
+		ShowMsg(client, "\x04[Equipment]\x01 Multiple Equipments enabled, type: \x04!me\x01 to select control mode");
 		ModeSelectMenu(client);
 	}
 	if(FirstRun[client]==true)
@@ -334,13 +334,13 @@ public Action:player_use(Handle:event, const String:name[], bool:dontBroadcast)
 	if(g_gamestart==false)
 	{				
 		g_gamestart=true;
-		ShowMsg(0, "[Equipment] Multiple Equipments started sucessfully!");
+		//ShowMsg(0, "[Equipment] Multiple Equipments started sucessfully!");
 	} 
 	 
 	if(MeEnable[client]==false)
 	{		
 		EnableClient(client,true);
-		ShowMsg(client, "[Equipment] Multiple Equipments enabled, type:!me to select control mode");
+		ShowMsg(client, "\x04[Equipment]\x01 Multiple Equipments enabled, type \x04!me\x01 to select control mode");
 		ModeSelectMenu(client);
 	}
 	if(FirstRun[client]==true)
