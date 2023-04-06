@@ -183,11 +183,11 @@ public void OnClientCookiesCached(int client)
 void SetClientPrefs(int client)
 {
 	if( !IsFakeClient(client) )
-	{
+	{	
 		static char sCookie[3];
 		Format(sCookie, sizeof(sCookie), "%s", g_iClientModePref[client]);
-		//PrintToChat(client,"Setting cookie %i to %d", g_iClientModePref[client], sCookie);
 		SetClientCookie(client, g_hCookie, sCookie);
+		ShowMsg(client, "Saving your preference. Type \x05!me\x01 to change it later");
 	}
 }
 
@@ -231,13 +231,18 @@ ModeSelectMenu(client, bool force=false)
 			 char message[128]; 
 			 Format(message, sizeof(message), "Mode \x04%i\x01 automatically chosen for multiple equipment. Type \x04!me\x01 to change it.", ControlMode[client]+1);
 			 ShowMsg(client, message);
-
 		} else {
 
 			new Handle:menu = CreateMenu(MenuSelector1);
 			SetMenuTitle(menu, "Please Select Control Mode for Multi-Equipments (!me)"); 
-			AddMenuItem(menu, "1", "Mode 1: 1,2,3,4,5 (default)");
-			AddMenuItem(menu, "2", "Mode 2: QQ, 11,22,33,44,55"); 
+		 	char mode1[128]; 
+		 	char mode2[128]; 
+
+		 	Format(mode1, sizeof(mode1), "Mode 1: 1,2,3,4,5 %s", g_iClientModePref[client] == 1 ? " (Active) " : "");
+		 	Format(mode2, sizeof(mode2), "Mode 2: QQ, 11,22,33,44,55 %s", g_iClientModePref[client] == 2 ? " (Active) ": "");
+
+			AddMenuItem(menu, "1", mode1);
+			AddMenuItem(menu, "2", mode2); 
 			SetMenuExitButton(menu, true);
 			 
 			DisplayMenu(menu, client, 10); 
@@ -260,18 +265,35 @@ public MenuSelector1(Handle:menu, MenuAction:action, client, param2)
 			g_iClientModePref[client] = 1;
 			SetClientPrefs(client);
 			ControlMode[client]=0;
-			if(client>0 && IsClientInGame(client))ShowMsg(client, "Press 1,2,3,4,5 to use Multi-Equipments");
+			if(client>0 && IsClientInGame(client))ShowMsg(client, "Press \x051,2,3,4,5\x01 to switch between equipments");
 		}
 		else if(StrEqual(item, "2"))
 		{
 			g_iClientModePref[client] = 2;
 			SetClientPrefs(client);
 			ControlMode[client]=1;
-			if(client>0 && IsClientInGame(client))ShowMsg(client, "Press double click Q, 1,2,3,4,5 to use Multi-Equipments");
+			if(client>0 && IsClientInGame(client))ShowMsg(client, "Double press \x05Q,1,2,3,4,5\x01 to switch between equipments");
 		}
 	}
-	 
+	if (action == MenuAction_Cancel) 
+	{
+		//int userId = GetClientUserId(client);
+		//CreateTimer(15.0, RetryMenu, userId, TIMER_FLAG_NO_MAPCHANGE);
+	}
+	return Plugin_Handled;	 
 }
+
+public Action RetryMenu(Handle timer, any userId)
+{
+	int client = GetClientOfUserId(userId);
+	if (client < 0 || !IsValidClient(client) || GetClientTeam(client) != 2) {
+		return Plugin_Stop;
+	}
+
+//	ModeSelectMenu(client);
+	return Plugin_Stop;
+}
+
 ShowMsg(client,String:msg[])
 {
 	new mode=GetConVarInt(l4d_me_custom_notify_msg);
@@ -334,13 +356,14 @@ public Action:player_use(Handle:event, const String:name[], bool:dontBroadcast)
 	if(g_gamestart==false)
 	{				
 		g_gamestart=true;
-		//ShowMsg(0, "[Equipment] Multiple Equipments started sucessfully!");
+
+		ShowMsg(0, "\x05[Equipment]\x01 Multiple Equipments started successfully!");
 	} 
 	 
 	if(MeEnable[client]==false)
 	{		
 		EnableClient(client,true);
-		ShowMsg(client, "\x04[Equipment]\x01 Multiple Equipments enabled, type \x04!me\x01 to select control mode");
+		ShowMsg(client, "\x05[Equipment]\x01 Multiple Equipments enabled, type:\x05!me\x01 to select control mode");
 		ModeSelectMenu(client);
 	}
 	if(FirstRun[client]==true)
@@ -385,7 +408,7 @@ DisableAllFirstRun()
 		FirstRun[i]=true;
 	}
 }
-UnHookAll( )
+UnHookAll()
 {
 	for(new i=0; i<=MaxClients; i++)
 	{ 
@@ -491,6 +514,7 @@ public Action ePlayerSpawn(Handle event, const char[] name, bool dont_broadcast)
 	int client = GetClientOfUserId(GetEventInt(event, "userid"));
 	sm_givewp(client, 0);
 	TeamDeath[client] = false;
+	OnClientCookiesCached(client);
 	CreateTimer(0.5, FixWeaponView, client, TIMER_FLAG_NO_MAPCHANGE);
 }
 
