@@ -187,6 +187,7 @@ void SetClientPrefs(int client)
 		static char sCookie[3];
 		Format(sCookie, sizeof(sCookie), "%s", g_iClientModePref[client]);
 		SetClientCookie(client, g_hCookie, sCookie);
+
 		ShowMsg(client, "Saving your preference. Type \x05!me\x01 to change it later");
 	}
 }
@@ -296,17 +297,19 @@ public Action RetryMenu(Handle timer, any userId)
 
 ShowMsg(client,String:msg[])
 {
+	static char translation[256];
+	Format(translation, sizeof(translation),  msg);
 	new mode=GetConVarInt(l4d_me_custom_notify_msg);
 	//if(mode==0)return;
 	if(mode == 0 || mode==1)
 	{
-		if(client==0)PrintToChatAll(msg);
-		else PrintToChat(client, msg);
+		if(client==0)PrintToChatAll(translation);
+		else PrintToChat(client, translation);
 	}
 	if( mode==2)
 	{
-		if(client==0)PrintHintTextToAll(msg);
-		else PrintHintText(client, msg);
+		if(client==0)PrintHintTextToAll(translation);
+		else PrintHintText(client, translation);
 	}
 }
 public Action:player_jump(Handle:event, const String:name[], bool:dontBroadcast)
