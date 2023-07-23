@@ -30,7 +30,7 @@ bool bThirdPerson[MAXPLAYERS+1];
 bool MeEnable[MAXPLAYERS+1]; 
 bool FirstRun[MAXPLAYERS+1]; 
 bool g_gamestart=false;
-
+bool menuRetried=false;
 char VoteFix[MAXPLAYERS+1][32];
 char ItemName[MAXPLAYERS+1][5][LEN64];
 char BackupItemName[MAXPLAYERS+1][5][LEN64];
@@ -50,6 +50,7 @@ Handle l4d_me_mode;
 Handle l4d_me_view;
 Handle l4d_me_slot[5];
 Handle l4d_me_afk_save;
+Handle l4d_me_save_settings;
 Handle l4d_me_player_connect;
 Handle l4d_me_custom_notify;
 Handle l4d_me_custom_notify_msg;
@@ -58,6 +59,7 @@ Handle AmmoLockSlot0 = INVALID_HANDLE;
 Handle AmmoLockSlot1 = INVALID_HANDLE;
 Handle AmmoUseDistance = INVALID_HANDLE;
 Handle g_hCookie;
+new Handle:g_RetryTimer[MAXPLAYERS+1];
 
 int	g_iClientModePref[MAXPLAYERS+1];// Client cookie preferences - mode client last used 
 
@@ -66,7 +68,7 @@ public Plugin myinfo =
 	name = "Multiple Equipment",
 	author = "Yani & MasterMind42 & Pan Xiaohai",
 	description = "Carry 2 items in each slot",
-	version = "3.8",
+	version = "3.9",
 	url = ""
 }
 
@@ -79,8 +81,9 @@ public void OnPluginStart()
 	l4d_me_slot[2] = CreateConVar("l4d_me_slot2", "1", "(Pipebomb), 0=Disable, 1=Enable");
 	l4d_me_slot[3] = CreateConVar("l4d_me_slot3", "1", "(Medkit), 0=Disable, 1=Enable");
 	l4d_me_slot[4] = CreateConVar("l4d_me_slot4", "1", "(Pills), 0=Disable, 1=Enable");
-	l4d_me_mode = CreateConVar("l4d_me_mode", "2", "1=Single Tap Mode, 2=Double Tap Mode");
+	l4d_me_mode = CreateConVar("l4d_me_mode", "2", "Set default setting for mode, 1=Single Tap Mode, 2=Double Tap Mode, 0=Let user select");
 
+	l4d_me_save_settings = CreateConVar("l4d_me_save_settings", "1", "0=Disable Saving settings - Ask user mode everytime, 1=Enable Saving settings - Save settings, ask user only again he types !me");
 	l4d_me_view = CreateConVar("l4d_me_view", "1", "0=Disable Extra Equipment View, 1=Enable Extra Equipment View");
 	l4d_me_afk_save = CreateConVar("l4d_me_afk_save", "1", "0=Disable AFK Save, 1=Enable AFK Save");
 	l4d_me_custom_notify = CreateConVar("l4d_me_custom_notify", "2", "0=Disable Custom Message, 1=Enable Chat Message, 2=Enable Hint Message");
@@ -127,7 +130,6 @@ public void OnPluginStart()
 
 	AutoExecConfig(true, "l4d_multiple_equipment");
 	g_hCookie = RegClientCookie("l4d_multiple_equipment_mode", "Multiple Equipment - Mode", CookieAccess_Protected);
-
 	// AddCommandListener(Listener_CallVote, "callvote");
 
 	ResetClientStateAll();
@@ -170,7 +172,7 @@ public void OnClientCookiesCached(int client)
 		iCookie = StringToInt(sCookie);
 		//PrintToChat(client, "Found cookie value %d", sCookie);
 	
-		if (iCookie == 1 || iCookie == 2)
+		if ((GetConVarBool(l4d_me_save_settings) == true)  && iCookie == 1 || iCookie == 2)
 		{
 			g_iClientModePref[client] = iCookie;
 
@@ -186,9 +188,10 @@ void SetClientPrefs(int client)
 	{	
 		static char sCookie[3];
 		Format(sCookie, sizeof(sCookie), "%s", g_iClientModePref[client]);
-		SetClientCookie(client, g_hCookie, sCookie);
-
-		ShowMsg(client, "Saving your preference. Type \x05!me\x01 to change it later");
+		if (GetConVarBool(l4d_me_save_settings) == true) {
+			SetClientCookie(client, g_hCookie, sCookie);
+			ShowMsg(client, "Saving your preference. Type \x05!me\x01 to change it later");
+		}
 	}
 }
 
@@ -227,7 +230,7 @@ ModeSelectMenu(client, bool force=false)
 	new mode=GetConVarInt(l4d_me_mode);
 	if(mode==0)
 	{
-		if (g_iClientModePref[client] > 0 && g_iClientModePref[client] < 3 && force == false) {
+		if (GetConVarBool(l4d_me_save_settings) == true && g_iClientModePref[client] > 0 && g_iClientModePref[client] < 3 && force == false) {
 			 ControlMode[client] = g_iClientModePref[client]-1;
 			 char message[128]; 
 			 Format(message, sizeof(message), "Mode \x04%i\x01 automatically chosen for multiple equipment. Type \x04!me\x01 to change it.", ControlMode[client]+1);
@@ -275,24 +278,35 @@ public MenuSelector1(Handle:menu, MenuAction:action, client, param2)
 			ControlMode[client]=1;
 			if(client>0 && IsClientInGame(client))ShowMsg(client, "Double press \x05Q,1,2,3,4,5\x01 to switch between equipments");
 		}
+
+
+		if (g_RetryTimer[client] != INVALID_HANDLE) {
+			KillTimer(g_RetryTimer[client]);
+			g_RetryTimer[client] = INVALID_HANDLE;
+        }
 	}
-	if (action == MenuAction_Cancel) 
-	{
-		//int userId = GetClientUserId(client);
-		//CreateTimer(15.0, RetryMenu, userId, TIMER_FLAG_NO_MAPCHANGE);
-	}
+	
+	else if (action == MenuAction_Cancel) 
+    {
+        // If the player cancelled the menu, start a timer to try again later
+        if (g_RetryTimer[client] != INVALID_HANDLE) 
+        {
+            // if timer is already running, reset it
+            KillTimer(g_RetryTimer[client]);
+        }
+        g_RetryTimer[client] = CreateTimer(5.0, RetryMenu, client, TIMER_REPEAT);
+    }
+	
 	return Plugin_Handled;	 
 }
 
-public Action RetryMenu(Handle timer, any userId)
+public Action:RetryMenu(Handle:timer, any:client)
 {
-	int client = GetClientOfUserId(userId);
 	if (client < 0 || !IsValidClient(client) || GetClientTeam(client) != 2) {
 		return Plugin_Stop;
 	}
-
-//	ModeSelectMenu(client);
-	return Plugin_Stop;
+	ModeSelectMenu(client, true);
+    return Plugin_Continue;
 }
 
 ShowMsg(client,String:msg[])
@@ -1523,6 +1537,8 @@ public void OnMapStart()
 		PrecacheModel(model_weapon_melee_tonfa);
 		PrecacheModel(model_weapon_melee_riotshield);
 		PrecacheModel(model_weapon_melee_knife);
+		PrecacheModel(model_weapon_melee_hunting_knife);
+
 		PrecacheModel(model_weapon_melee_pitchfork);
 		PrecacheModel(model_weapon_melee_shovel);
 		
@@ -1547,6 +1563,7 @@ public void OnMapStart()
 		PrecacheGeneric( "scripts/melee/katana.txt", true);
 		PrecacheGeneric( "scripts/melee/machete.txt", true);
 		PrecacheGeneric( "scripts/melee/tonfa.txt", true);
+		PrecacheGeneric( "scripts/melee/knife.txt", true);
 		PrecacheGeneric( "scripts/melee/riotshield.txt", true);
 	}
 	else
