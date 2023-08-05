@@ -69,7 +69,7 @@ public Plugin myinfo =
 	name = "Multiple Equipment",
 	author = "Yani & MasterMind42 & Pan Xiaohai",
 	description = "Carry 2 items in each slot",
-	version = "3.9",
+	version = "3.91",
 	url = ""
 }
 
