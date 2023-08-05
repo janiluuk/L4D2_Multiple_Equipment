@@ -48,6 +48,7 @@ float LastMeSwitchTime[MAXPLAYERS+1];
 
 Handle l4d_me_mode;
 Handle l4d_me_view;
+Handle l4d_me_retry_menu;
 Handle l4d_me_slot[5];
 Handle l4d_me_afk_save;
 Handle l4d_me_save_settings;
@@ -82,6 +83,7 @@ public void OnPluginStart()
 	l4d_me_slot[3] = CreateConVar("l4d_me_slot3", "1", "(Medkit), 0=Disable, 1=Enable");
 	l4d_me_slot[4] = CreateConVar("l4d_me_slot4", "1", "(Pills), 0=Disable, 1=Enable");
 	l4d_me_mode = CreateConVar("l4d_me_mode", "2", "Set default setting for mode, 1=Single Tap Mode, 2=Double Tap Mode, 0=Let user select");
+	l4d_me_retry_menu = CreateConVar("l4d_me_retry_menu", "0", "0=Dont retry opening menu  1=If mode select menu is blocked by another menu, retry showing the menu");
 
 	l4d_me_save_settings = CreateConVar("l4d_me_save_settings", "1", "0=Disable Saving settings - Ask user mode everytime, 1=Enable Saving settings - Save settings, ask user only again he types !me");
 	l4d_me_view = CreateConVar("l4d_me_view", "1", "0=Disable Extra Equipment View, 1=Enable Extra Equipment View");
@@ -282,7 +284,7 @@ public MenuSelector1(Handle:menu, MenuAction:action, client, param2)
 
 		if (g_RetryTimer[client] != INVALID_HANDLE) {
 			KillTimer(g_RetryTimer[client]);
-			g_RetryTimer[client] = INVALID_HANDLE;
+ 			g_RetryTimer[client] = INVALID_HANDLE;
         }
 	}
 	
@@ -293,15 +295,19 @@ public MenuSelector1(Handle:menu, MenuAction:action, client, param2)
         {
             // if timer is already running, reset it
             KillTimer(g_RetryTimer[client]);
+
         }
-        g_RetryTimer[client] = CreateTimer(5.0, RetryMenu, client, TIMER_REPEAT);
+		if (GetConVarInt(l4d_me_retry_menu) == 1) {
+			g_RetryTimer[client] = CreateTimer(5.0, RetryMenu, GetClientUserId(client), TIMER_REPEAT);
+		}
     }
 	
 	return Plugin_Handled;	 
 }
 
-public Action:RetryMenu(Handle:timer, any:client)
+public Action:RetryMenu(Handle:timer, any:userid)
 {
+	int client = GetClientOfUserId(userid);
 	if (client < 0 || !IsValidClient(client) || GetClientTeam(client) != 2) {
 		return Plugin_Stop;
 	}
